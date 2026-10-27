@@ -14,8 +14,8 @@ xcrun clang -fobjc-arc -O2 -mmacosx-version-min=13.0 -arch arm64 -arch x86_64 \
   -framework UserNotifications \
   "$project_dir/Sources/main.m" \
   -o "$app_dir/Contents/MacOS/VPNCountryFlag"
-cp "Info.plist" "$app_dir/Contents/Info.plist"
-cp "PkgInfo" "$app_dir/Contents/PkgInfo"
+cp "$project_dir/Info.plist" "$app_dir/Contents/Info.plist"
+cp "$project_dir/PkgInfo" "$app_dir/Contents/PkgInfo"
 cp "$project_dir/Resources/AppIcon.icns" "$app_dir/Contents/Resources/VPNCountryFlag.icns"
 codesign --force --deep --sign - "$app_dir"
 

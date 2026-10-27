@@ -49,7 +49,7 @@ When your exit changes, VPN Country Flag reports exactly what changed:
 ```text
 Public IP Changed
 2026-10-27 05:07:56
-🇺🇸159.26.101.xxx → 🇺🇸159.26.101.xxx
+🇺🇸159.26.101.xxx → 🇺🇸159.26.101.yyy
 ```
 
 If the country changes, the notification title becomes **VPN Country Changed**.

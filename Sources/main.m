@@ -44,12 +44,17 @@ static NSString *NotificationTimestamp(void) {
 static void MigrateLegacyPreferences(void) {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     if ([defaults boolForKey:kLegacyMigrationComplete]) return;
-    NSUserDefaults *legacy = [[NSUserDefaults alloc] initWithSuiteName:@"com.local.flagip"];
     NSArray<NSString *> *keys = @[kRefreshInterval, kNotifyChanges, kPlaySound,
                                   kIPv4Format, kIPv6Format, kCountryFormat, kCachedLocation];
-    for (NSString *key in keys) {
-        id value = [legacy objectForKey:key];
-        if (value) [defaults setObject:value forKey:key];
+    NSArray<NSString *> *legacyDomains = @[@"com.vpncountryflag.app", @"com.local.flagip"];
+    for (NSString *domainName in legacyDomains) {
+        NSDictionary *legacy = [defaults persistentDomainForName:domainName];
+        if (legacy.count == 0) continue;
+        for (NSString *key in keys) {
+            id value = legacy[key];
+            if (value) [defaults setObject:value forKey:key];
+        }
+        break;
     }
     [defaults setBool:YES forKey:kLegacyMigrationComplete];
 }
