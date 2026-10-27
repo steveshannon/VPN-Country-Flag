@@ -1,0 +1,22 @@
+.DS_Store
+
+# Build output
+dist/
+build/
+.build/
+DerivedData/
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# Xcode user-specific state
+*.xcuserstate
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Local signing and archives
+*.xcarchive
+*.ipa
+*.dSYM
