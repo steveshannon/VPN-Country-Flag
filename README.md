@@ -49,14 +49,21 @@ When your exit changes, VPN Country Flag reports exactly what changed:
 ```text
 Public IP Changed
 2026-10-27 05:07:56
-🇺🇸159.26.101.34 → 🇺🇸159.26.101.67
+🇺🇸159.26.101.xxx → 🇺🇸159.26.101.xxx
 ```
 
 If the country changes, the notification title becomes **VPN Country Changed**.
 
+## Screenshots
+
 <p align="center">
-  <img src="Screenshots/notification.png" alt="VPN Country Flag notification with timestamp and public IP" width="361">
-  <br><em>A compact notification with the app icon, timestamp, country flag, and public IP</em>
+  <img src="Screenshots/vpn-country-flag-test-notification.png" alt="VPN Country Flag test notification" width="345">
+  <br><em>After installing and launching the app, choose <strong>Test notification</strong> from the menu to confirm that notifications and sound are working.</em>
+</p>
+
+<p align="center">
+  <img src="Screenshots/vpn-country-flag-globetrotter.png" alt="VPN Country Flag showing United States, Australia, Japan, and United States exit changes" width="1047">
+  <br><em>A globetrotting test: United States → Australia → Japan → United States.</em>
 </p>
 
 ## Installation
