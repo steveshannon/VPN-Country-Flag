@@ -35,6 +35,7 @@ glance.
 | 🔄 | **Automatic detection** | Refreshes when macOS reports a network change, including many VPN connections and disconnections |
 | ⏱️ | **Backup refresh** | Optionally checks every 1, 5, or 15 minutes when a network change is not reported |
 | 🔔 | **Change notifications** | Shows a timestamped notification when the public IP or country changes |
+| 📍 | **Exit location details** | Optionally shows the estimated city, region, country, and ISP in the menu |
 | 🔊 | **Optional sound** | Plays a notification sound when the exit changes |
 | 📋 | **Quick copy** | Copies the current public IP from the menu |
 | 🖧 | **Local addresses** | Lists active local IPv4 and IPv6 interface addresses |
@@ -48,11 +49,21 @@ When your exit changes, VPN Country Flag reports exactly what changed:
 
 ```text
 Public IP Changed
-2026-10-27 05:07:56
-🇺🇸159.26.101.xxx → 🇺🇸159.26.101.yyy
+2026-11-01 22:23:24
+159.26.101.xxx → 146.70.217.xxx
+🇺🇸 Boston, MA → 🇺🇸 Dallas, TX
 ```
 
-If the country changes, the notification title becomes **VPN Country Changed**.
+For an IP change within one country, the location line uses city and
+state/region. If the country changes, the title becomes **VPN Country Changed**
+and the location line uses city and country code instead:
+
+```text
+VPN Country Changed
+2026-11-01 22:34:35
+159.26.119.xxx → 159.26.101.xxx
+🇺🇸 Boston, US → 🇯🇵 Tokyo, JP
+```
 
 ## Screenshots
 
@@ -71,7 +82,7 @@ If the country changes, the notification title becomes **VPN Country Changed**.
 1. Download the latest build from the repository's **Releases** page.
 2. Move **VPN Country Flag.app** to `/Applications`.
 3. Control-click the app and choose **Open** on first launch.
-4. Open **Preferences** from the flag menu to configure refreshes,
+4. Open **Preferences** from the flag menu to configure menu details, refreshes,
    notifications, sound, and launch at login.
 
 Personal builds are ad-hoc signed. Until the app is signed and notarized through
@@ -87,14 +98,18 @@ after downloading it.
    manually, or open Preferences.
 
 The default menu-bar format shows only the emoji flag. Preferences can also show
-the country code, country name, IPv4 address, or IPv6 address.
+the country code, country name, IPv4 address, or IPv6 address in the menu bar,
+and independently show or hide the public IP, city, region, country, and ISP in
+the dropdown menu.
 
 ## How It Works
 
 VPN Country Flag asks a public IP geolocation service which IP address made the
-request and which country that address is associated with. It uses `ipwho.is`
-first and `ipapi.co` as a fallback. The returned two-letter country code is
-converted locally into a flag emoji.
+request and which approximate location that address is associated with. It uses
+`ipwho.is` first and `ipapi.co` as a fallback. The returned two-letter country
+code is converted locally into a flag emoji. City, region, and ISP values
+describe the provider's best estimate of the VPN exit location and may not be
+exact.
 
 The last successful result is cached. During an ordinary refresh, the existing
 flag remains visible. If both services fail, the menu-bar item changes to 🆘 and

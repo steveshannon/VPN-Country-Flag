@@ -13,6 +13,11 @@ static NSString * const kPlaySound = @"playSound";
 static NSString * const kIPv4Format = @"ipv4Format";
 static NSString * const kIPv6Format = @"ipv6Format";
 static NSString * const kCountryFormat = @"countryFormat";
+static NSString * const kShowMenuIP = @"showMenuIP";
+static NSString * const kShowMenuCity = @"showMenuCity";
+static NSString * const kShowMenuRegion = @"showMenuRegion";
+static NSString * const kShowMenuCountry = @"showMenuCountry";
+static NSString * const kShowMenuISP = @"showMenuISP";
 static NSString * const kCachedLocation = @"cachedLocation";
 static NSString * const kLegacyMigrationComplete = @"legacyMigrationComplete";
 
@@ -41,11 +46,35 @@ static NSString *NotificationTimestamp(void) {
     return [formatter stringFromDate:NSDate.date];
 }
 
+static NSString *CleanString(id value) {
+    return [value isKindOfClass:NSString.class] && [value length] ? value : nil;
+}
+
+static NSString *NotificationPlace(NSDictionary *location, BOOL countryChanged) {
+    NSString *city = CleanString(location[@"city"]);
+    NSString *detail = countryChanged ? [CleanString(location[@"countryCode"]) uppercaseString]
+                                      : [CleanString(location[@"regionCode"]) uppercaseString];
+    if (!detail.length && !countryChanged) detail = CleanString(location[@"region"]);
+    if (!detail.length) detail = [CleanString(location[@"countryCode"]) uppercaseString];
+    NSString *place = city.length && detail.length ? [NSString stringWithFormat:@"%@, %@", city, detail]
+                    : city.length ? city
+                    : detail.length ? detail
+                    : CleanString(location[@"country"]) ?: @"Unknown location";
+    return [NSString stringWithFormat:@"%@ %@", FlagForCountryCode(location[@"countryCode"]), place];
+}
+
+static NSString *NotificationISPLine(NSDictionary *location) {
+    if (![NSUserDefaults.standardUserDefaults boolForKey:kShowMenuISP]) return @"";
+    NSString *isp = CleanString(location[@"isp"]);
+    return isp.length ? [NSString stringWithFormat:@"\nISP: %@", isp] : @"";
+}
+
 static void MigrateLegacyPreferences(void) {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     if ([defaults boolForKey:kLegacyMigrationComplete]) return;
     NSArray<NSString *> *keys = @[kRefreshInterval, kNotifyChanges, kPlaySound,
-                                  kIPv4Format, kIPv6Format, kCountryFormat, kCachedLocation];
+                                  kIPv4Format, kIPv6Format, kCountryFormat, kCachedLocation,
+                                  kShowMenuIP, kShowMenuCity, kShowMenuRegion, kShowMenuCountry, kShowMenuISP];
     NSArray<NSString *> *legacyDomains = @[@"com.vpncountryflag.app", @"com.local.flagip"];
     for (NSString *domainName in legacyDomains) {
         NSDictionary *legacy = [defaults persistentDomainForName:domainName];
@@ -85,7 +114,7 @@ static void MigrateLegacyPreferences(void) {
 }
 
 - (instancetype)initWithDelegate:(AppDelegate *)delegate {
-    NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 535, 345)
+    NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 575, 485)
                                                    styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
                                                      backing:NSBackingStoreBuffered
                                                        defer:NO];
@@ -129,6 +158,11 @@ static void MigrateLegacyPreferences(void) {
         @[[self label:@"IPv4 format"], [self popup:@[@"Hidden", @"Address"] selected:[_defaults stringForKey:kIPv4Format] action:@selector(ipv4Changed:)]],
         @[[self label:@"IPv6 format"], [self popup:@[@"Hidden", @"Address"] selected:[_defaults stringForKey:kIPv6Format] action:@selector(ipv6Changed:)]],
         @[[self label:@"Country format"], [self popup:@[@"Emoji flag", @"Country code", @"Country name", @"Hidden"] selected:[_defaults stringForKey:kCountryFormat] action:@selector(countryChanged:)]],
+        @[[self label:@"Menu details"], [self checkbox:@"Show public IP" state:[_defaults boolForKey:kShowMenuIP] action:@selector(menuDetailChanged:)]],
+        @[[self label:@""], [self checkbox:@"Show city" state:[_defaults boolForKey:kShowMenuCity] action:@selector(menuDetailChanged:)]],
+        @[[self label:@""], [self checkbox:@"Show region or state" state:[_defaults boolForKey:kShowMenuRegion] action:@selector(menuDetailChanged:)]],
+        @[[self label:@""], [self checkbox:@"Show country name" state:[_defaults boolForKey:kShowMenuCountry] action:@selector(menuDetailChanged:)]],
+        @[[self label:@""], [self checkbox:@"Show ISP" state:[_defaults boolForKey:kShowMenuISP] action:@selector(menuDetailChanged:)]],
         @[[self label:@"IP refresh interval"], [self popup:@[@"Off", @"1 minute", @"5 minutes", @"15 minutes"] selected:[self intervalTitle] action:@selector(intervalChanged:)]],
         @[[self label:@"Notifications"], [self checkbox:@"Notify when the public IP changes" state:[_defaults boolForKey:kNotifyChanges] action:@selector(notifyChanged:)]],
         @[[self label:@""], [self checkbox:@"Play sound for notifications" state:[_defaults boolForKey:kPlaySound] action:@selector(soundChanged:)]]
@@ -178,6 +212,12 @@ static void MigrateLegacyPreferences(void) {
 - (void)ipv4Changed:(NSPopUpButton *)sender { [_defaults setObject:sender.titleOfSelectedItem forKey:kIPv4Format]; [_appDelegate settingsDidChange]; }
 - (void)ipv6Changed:(NSPopUpButton *)sender { [_defaults setObject:sender.titleOfSelectedItem forKey:kIPv6Format]; [_appDelegate settingsDidChange]; }
 - (void)countryChanged:(NSPopUpButton *)sender { [_defaults setObject:sender.titleOfSelectedItem forKey:kCountryFormat]; [_appDelegate settingsDidChange]; }
+- (void)menuDetailChanged:(NSButton *)sender {
+    NSDictionary<NSString *, NSString *> *keys = @{@"Show public IP": kShowMenuIP, @"Show city": kShowMenuCity,
+        @"Show region or state": kShowMenuRegion, @"Show country name": kShowMenuCountry, @"Show ISP": kShowMenuISP};
+    [_defaults setBool:sender.state == NSControlStateValueOn forKey:keys[sender.title]];
+    [_appDelegate settingsDidChange];
+}
 - (void)intervalChanged:(NSPopUpButton *)sender {
     NSDictionary *values = @{@"Off": @0, @"1 minute": @60, @"5 minutes": @300, @"15 minutes": @900};
     [_defaults setInteger:[values[sender.titleOfSelectedItem] integerValue] forKey:kRefreshInterval];
@@ -213,7 +253,12 @@ static void NetworkStoreChanged(SCDynamicStoreRef store, CFArrayRef changedKeys,
         kPlaySound: @YES,
         kIPv4Format: @"Hidden",
         kIPv6Format: @"Hidden",
-        kCountryFormat: @"Emoji flag"
+        kCountryFormat: @"Emoji flag",
+        kShowMenuIP: @YES,
+        kShowMenuCity: @YES,
+        kShowMenuRegion: @YES,
+        kShowMenuCountry: @YES,
+        kShowMenuISP: @NO
     }];
     self.location = [NSUserDefaults.standardUserDefaults dictionaryForKey:kCachedLocation];
     self.statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:NSVariableStatusItemLength];
@@ -251,8 +296,12 @@ static void NetworkStoreChanged(SCDynamicStoreRef store, CFArrayRef changedKeys,
 - (void)rebuildMenu:(NSMenu *)menu {
     [menu removeAllItems];
     if (self.location) {
-        [self addInfo:[NSString stringWithFormat:@"IP: %@", self.location[@"ip"]] toMenu:menu];
-        [self addInfo:[NSString stringWithFormat:@"Country: %@ %@", self.location[@"country"], FlagForCountryCode(self.location[@"countryCode"])] toMenu:menu];
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        if ([defaults boolForKey:kShowMenuIP]) [self addInfo:[NSString stringWithFormat:@"IP: %@", self.location[@"ip"]] toMenu:menu];
+        if ([defaults boolForKey:kShowMenuCity] && CleanString(self.location[@"city"])) [self addInfo:[NSString stringWithFormat:@"City: %@", self.location[@"city"]] toMenu:menu];
+        if ([defaults boolForKey:kShowMenuRegion] && CleanString(self.location[@"region"])) [self addInfo:[NSString stringWithFormat:@"Region: %@", self.location[@"region"]] toMenu:menu];
+        if ([defaults boolForKey:kShowMenuCountry]) [self addInfo:[NSString stringWithFormat:@"Country: %@ %@", self.location[@"country"], FlagForCountryCode(self.location[@"countryCode"])] toMenu:menu];
+        if ([defaults boolForKey:kShowMenuISP] && CleanString(self.location[@"isp"])) [self addInfo:[NSString stringWithFormat:@"ISP: %@", self.location[@"isp"]] toMenu:menu];
         NSDate *updated = self.location[@"updatedAt"];
         if (updated) {
             NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
@@ -360,7 +409,15 @@ static void NetworkStoreChanged(SCDynamicStoreRef store, CFArrayRef changedKeys,
             NSString *code = json[@"country_code"];
             BOOL serviceError = primary ? [json[@"success"] isEqual:@NO] : [json[@"error"] isEqual:@YES];
             if (!error && http.statusCode >= 200 && http.statusCode < 300 && !serviceError && ip.length && country.length && code.length == 2) {
-                [self applyLocation:@{@"ip": ip, @"country": country, @"countryCode": code, @"updatedAt": NSDate.date}];
+                NSMutableDictionary *location = [@{@"ip": ip, @"country": country, @"countryCode": code, @"updatedAt": NSDate.date} mutableCopy];
+                NSDictionary *optionalFields = @{
+                    @"city": CleanString(json[@"city"]) ?: @"",
+                    @"region": CleanString(json[@"region"]) ?: @"",
+                    @"regionCode": CleanString(json[@"region_code"]) ?: @"",
+                    @"isp": CleanString(primary ? json[@"connection"][@"isp"] : json[@"org"]) ?: @""
+                };
+                [optionalFields enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *value, BOOL *stop) { if (value.length) location[key] = value; }];
+                [self applyLocation:location];
             } else if (primary) {
                 self.dataTask = nil;
                 [self requestURL:[NSURL URLWithString:@"https://ipapi.co/json/"] primary:NO];
@@ -417,9 +474,18 @@ static void NetworkStoreChanged(SCDynamicStoreRef store, CFArrayRef changedKeys,
     UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
     content.title = countryChanged ? @"VPN Country Changed" : @"Public IP Changed";
     content.subtitle = NotificationTimestamp();
-    content.body = [NSString stringWithFormat:@"%@%@ → %@%@",
-                    FlagForCountryCode(old[@"countryCode"]), old[@"ip"],
-                    FlagForCountryCode(newLocation[@"countryCode"]), newLocation[@"ip"]];
+    NSString *ispLine = @"";
+    if ([NSUserDefaults.standardUserDefaults boolForKey:kShowMenuISP]) {
+        NSString *oldISP = CleanString(old[@"isp"]);
+        NSString *newISP = CleanString(newLocation[@"isp"]);
+        if (oldISP.length || newISP.length) {
+            if (oldISP.length && newISP.length && ![oldISP isEqual:newISP]) ispLine = [NSString stringWithFormat:@"\nISP: %@ → %@", oldISP, newISP];
+            else ispLine = [NSString stringWithFormat:@"\nISP: %@", newISP ?: oldISP];
+        }
+    }
+    content.body = [NSString stringWithFormat:@"%@ → %@\n%@ → %@%@",
+                    old[@"ip"], newLocation[@"ip"],
+                    NotificationPlace(old, countryChanged), NotificationPlace(newLocation, countryChanged), ispLine];
     if ([NSUserDefaults.standardUserDefaults boolForKey:kPlaySound]) content.sound = UNNotificationSound.defaultSound;
     UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:NSUUID.UUID.UUIDString content:content trigger:nil];
     [UNUserNotificationCenter.currentNotificationCenter addNotificationRequest:request withCompletionHandler:^(NSError *error) {
@@ -454,7 +520,7 @@ static void NetworkStoreChanged(SCDynamicStoreRef store, CFArrayRef changedKeys,
         UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
         content.title = @"Notification Test";
         content.subtitle = NotificationTimestamp();
-        content.body = self.location ? [NSString stringWithFormat:@"%@%@", FlagForCountryCode(self.location[@"countryCode"]), self.location[@"ip"]] : @"VPN Country Flag is working";
+        content.body = self.location ? [NSString stringWithFormat:@"%@\n%@%@", self.location[@"ip"], NotificationPlace(self.location, NO), NotificationISPLine(self.location)] : @"VPN Country Flag is working";
         if ([NSUserDefaults.standardUserDefaults boolForKey:kPlaySound]) content.sound = UNNotificationSound.defaultSound;
         UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:NSUUID.UUID.UUIDString content:content trigger:nil];
         [UNUserNotificationCenter.currentNotificationCenter addNotificationRequest:request withCompletionHandler:nil];
@@ -485,7 +551,7 @@ static void NetworkStoreChanged(SCDynamicStoreRef store, CFArrayRef changedKeys,
 - (void)showAbout:(id)sender {
     [NSApp orderFrontStandardAboutPanelWithOptions:@{
         NSAboutPanelOptionApplicationName: @"VPN Country Flag",
-        NSAboutPanelOptionApplicationVersion: @"1.1.3",
+        NSAboutPanelOptionApplicationVersion: @"1.2.0",
         NSAboutPanelOptionCredits: [[NSAttributedString alloc] initWithString:@"A quiet country-flag indicator for your current public IP."]
     }];
     [NSApp activateIgnoringOtherApps:YES];
